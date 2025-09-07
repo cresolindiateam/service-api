@@ -1,0 +1,41 @@
+name: CICDDEMO
+on:
+  push:
+    branches: [ "dev" ]
+    paths:
+      - "service-api/**"
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: service-api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run unit tests (test_app.py)
+        run: python -m unittest -v test_app.py
+
+  deploy:
+    needs: test
+    if: ${{ needs.test.result == 'success' }}
+    runs-on: ubuntu-latest
+    environment: production     # approval gate
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Sync dev → production
+        run: |
+          git config user.name "${GITHUB_ACTOR}"
+          git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+          git fetch origin
+          git checkout -B production
+          git reset --hard origin/dev
+          git push origin production --force
+
